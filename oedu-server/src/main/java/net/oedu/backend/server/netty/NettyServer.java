@@ -16,7 +16,6 @@ import net.oedu.backend.base.server.ServerUtils;
 import net.oedu.backend.base.sql.models.TableModelAutoId;
 import net.oedu.backend.data.entities.user.User;
 import net.oedu.backend.data.entities.user.UserSession;
-import net.oedu.backend.data.repositories.user.UserRepository;
 import net.oedu.backend.data.repositories.user.UserSessionRepository;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
@@ -31,7 +30,7 @@ public class NettyServer {
     private UserSessionRepository userSessionRepository;
 
 
-    public NettyServer(AnnotationConfigApplicationContext applicationContext) throws Exception {
+    public NettyServer(final AnnotationConfigApplicationContext applicationContext) throws Exception {
         // Configure SSL.
 
         this.userSessionRepository = applicationContext.getBean(UserSessionRepository.class);
@@ -42,12 +41,12 @@ public class NettyServer {
                 if (type.equalsIgnoreCase("user")) {
                     for (UserSession userSession : userSessionRepository.findUserSessionsByUser((User) user)) {
                         try {
-                            WebSocketFrameHandler.sendMessage(userSession, response, tag);
+                            WebSocketFrameHandler.sendMessage(userSession, true, response, tag);
                         } catch (NullPointerException ignore) { }
                     }
                 }
                 if (type.equalsIgnoreCase("session")) {
-                    WebSocketFrameHandler.sendMessage((UserSession) user, response, tag);
+                    WebSocketFrameHandler.sendMessage((UserSession) user, true, response, tag);
                 }
             }
 

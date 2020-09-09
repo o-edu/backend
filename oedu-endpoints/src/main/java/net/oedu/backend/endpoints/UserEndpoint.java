@@ -1,5 +1,6 @@
 package net.oedu.backend.endpoints;
 
+import io.netty.handler.codec.http.HttpResponseStatus;
 import net.oedu.backend.base.endpoints.*;
 import net.oedu.backend.base.security.Hashing;
 import net.oedu.backend.base.server.ServerUtils;
@@ -14,6 +15,7 @@ import net.oedu.backend.data.repositories.user.UserSessionRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,12 +37,8 @@ public final class UserEndpoint extends EndpointClass {
     public void setup(@EndpointParameter(value = "user", type = EndpointParameterType.REPOSITORY) final UserRepository userRepository,
                       @EndpointParameter(value = "userRole", type = EndpointParameterType.REPOSITORY) final UserRoleRepository userRoleRepository,
                       @EndpointParameter(value = "userSession", type = EndpointParameterType.REPOSITORY) final UserSessionRepository userSessionRepository,
-
-                      @EndpointParameter(value = "userMaterialAccess", type = EndpointParameterType.REPOSITORY)
-                          final UserMaterialAccessRepository userMaterialAccessRepository,
-
-                      @EndpointParameter(value = "userCourseAccess", type = EndpointParameterType.REPOSITORY)
-                          final UserCourseAccessRepository userCourseAccessRepository) {
+                      @EndpointParameter(value = "userMaterialAccess", type = EndpointParameterType.REPOSITORY) final UserMaterialAccessRepository userMaterialAccessRepository,
+                      @EndpointParameter(value = "userCourseAccess", type = EndpointParameterType.REPOSITORY) final UserCourseAccessRepository userCourseAccessRepository) {
 
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
@@ -89,7 +87,6 @@ public final class UserEndpoint extends EndpointClass {
             if (Hashing.verify(password, user.getPasswordHash())) {
                 user.setLastLogin(OffsetDateTime.now());
                 userRepository.save(user);
-                userSessionRepository.deleteAllByUser(user);
                 UserSession userSession = UserSession.create(userSessionRepository, user);
                 response = new Response(200, userSession)
                         .setAction(ResponseAction.LOG_IN, userSession);
@@ -119,10 +116,38 @@ public final class UserEndpoint extends EndpointClass {
         return new Response(200, userSession).setAction(ResponseAction.LOG_IN, userSession);
     }
 
+    @Endpoint("delete_session")
+    public Response deleteSession(@EndpointParameter(value = "user", type = EndpointParameterType.USER, optional = true) final User user,
+                                  @EndpointParameter("session_uuid") final String sessionUuid) {
+        Optional<UserSession> session = userSessionRepository.findById(UUID.fromString(sessionUuid));
+        if (session.isEmpty()) return new Response(400, "NO_SUCH_SESSION");
+        if (user != null) ServerUtils.action(session.get(), ResponseAction.LOG_OUT, session.get());
+        session.ifPresent(userSession -> userSessionRepository.delete(userSession));
+        return new Response(200);
+    }
+
     @Endpoint("logout")
     public Response logout(@EndpointParameter(value = "user", type = EndpointParameterType.SESSION) final UserSession session) {
         ServerUtils.action(session, ResponseAction.LOG_OUT, session);
         userSessionRepository.delete(session);
+        return new Response(200);
+    }
+
+    @Endpoint("logout_all")
+    public Response logoutAll(@EndpointParameter(value = "user", type = EndpointParameterType.SESSION) final UserSession userSession,
+                              @EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user) {
+        ServerUtils.action(userSession, ResponseAction.LOG_OUT_ALL, userSessionRepository.findUserSessionsByUser(user));
+        userSessionRepository.deleteAllByUser(user);
+        return new Response(HttpResponseStatus.OK);
+    }
+
+    @Endpoint("logout_all_other")
+    public Response logoutAllOther(@EndpointParameter(value = "user", type = EndpointParameterType.SESSION) final UserSession userSession,
+                                   @EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user) {
+        List<UserSession> deleteSessions = userSessionRepository.findUserSessionsByUser(user);
+        deleteSessions.remove(userSession);
+        ServerUtils.action(userSession, ResponseAction.LOG_OUT_ALL, deleteSessions);
+        userSessionRepository.deleteAll(deleteSessions);
         return new Response(200);
     }
 

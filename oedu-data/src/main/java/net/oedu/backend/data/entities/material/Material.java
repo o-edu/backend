@@ -31,7 +31,7 @@ public final class Material extends TableModelAutoId implements JsonSerializable
         m.fileEnd = fileEnd;
         m.course = course;
         m.creator = creator;
-        rep.save(m);
+        rep.saveAndFlush(m);
         return m;
     }
 

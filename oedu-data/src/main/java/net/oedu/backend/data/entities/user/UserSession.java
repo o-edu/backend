@@ -18,6 +18,7 @@ public final class UserSession extends TableModelAutoId implements JsonSerializa
     @ManyToOne
     private User user;
     private OffsetDateTime creation;
+    private OffsetDateTime lastUse;
 
     public static UserSession create(final UserSessionRepository repository, final User user) {
         UserSession userSession = new UserSession();

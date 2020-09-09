@@ -5,5 +5,6 @@ public enum ResponseAction {
     LOG_OUT,
     UPLOAD_START,
     UPLOAD_BREAKUP,
-    UPLOAD_END
+    UPLOAD_END,
+    LOG_OUT_ALL
 }

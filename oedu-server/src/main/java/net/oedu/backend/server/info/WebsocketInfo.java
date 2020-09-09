@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class WebsocketInfo {
 
@@ -16,8 +17,13 @@ public class WebsocketInfo {
         throw new RuntimeException("NOT_A_INSTANCE_CLASS");
     }
 
-    public static final Map<Channel, UserSession> CHANNEL_USER_MAP = new HashMap<>();
-    public static final Map<UserSession, Channel> USER_CHANNEL_MAP = new HashMap<>();
+    public static final Map<Channel, UUID> CHANNEL_USER_MAP = new HashMap<>();
+    public static final Map<UUID, Channel> USER_CHANNEL_MAP = new HashMap<>();
     public static final List<Channel> CHANNELS = new ArrayList<>();
     public static final Map<Channel, UploadFile> FILE_UPLOAD_MAP = new HashMap<>();
+    public static final Map<UUID, UserSession> USER_SESSIONS_IN_USE = new HashMap<>();
+
+    public static UserSession getUserSession(final Channel channel) {
+        return USER_SESSIONS_IN_USE.get(CHANNEL_USER_MAP.get(channel));
+    }
 }

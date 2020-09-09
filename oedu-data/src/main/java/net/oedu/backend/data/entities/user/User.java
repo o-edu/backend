@@ -39,7 +39,7 @@ public final class User extends TableModelAutoId implements JsonSerializable {
         user.setLastLogin(OffsetDateTime.now());
         user.setUserRole(userRole);
         user.setServerAdministrator(false);
-        repository.save(user);
+        repository.saveAndFlush(user);
         return user;
     }
 

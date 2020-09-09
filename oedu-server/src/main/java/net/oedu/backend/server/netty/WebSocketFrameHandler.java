@@ -20,10 +20,13 @@ import net.oedu.backend.base.upload.UploadFile;
 import net.oedu.backend.data.entities.material.Material;
 import net.oedu.backend.data.entities.user.User;
 import net.oedu.backend.data.entities.user.UserSession;
+import net.oedu.backend.data.repositories.user.UserSessionRepository;
 import net.oedu.backend.server.Server;
 import net.oedu.backend.server.info.WebsocketInfo;
 
 import java.io.*;
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 
 public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame> {
@@ -53,19 +56,21 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
             request = gson.fromJson(message, Map.class);
 
         } catch (JsonSyntaxException e) {
-            sendMessage(ctx.channel(), new Response(HttpResponseStatus.BAD_REQUEST, "CORRPUT_JSON_SYNTAX"), "error");
+            sendMessage(ctx.channel(), false, new Response(HttpResponseStatus.BAD_REQUEST, "CORRPUT_JSON_SYNTAX"), "error");
             return;
         }
         if (request.get("tag") == null) {
-            sendMessage(ctx.channel(), new Response(HttpResponseStatus.BAD_REQUEST, "TAG_MISSING"), "error");
+            sendMessage(ctx.channel(), false, new Response(HttpResponseStatus.BAD_REQUEST, "TAG_MISSING"), "error");
         }
         try {
 
-            UserSession userSession = WebsocketInfo.CHANNEL_USER_MAP.get(ctx.channel());
+            UserSession userSession = WebsocketInfo.getUserSession(ctx.channel());
 
             User user = null;
             if (userSession != null) {
                 user = userSession.getUser();
+                userSession.setLastUse(OffsetDateTime.now());
+                Server.getApplicationContext().getBean(UserSessionRepository.class).saveAndFlush(userSession);
             }
 
             Response response = Server.getEndpointExecutor().execute(request, userSession, user);
@@ -80,7 +85,7 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
                     .add("data", response.getMessage())
                     .build());
         } catch (Exception e) {
-            sendMessage(ctx.channel(), new Response(HttpResponseStatus.INTERNAL_SERVER_ERROR), (String) request.get("tag"));
+            sendMessage(ctx.channel(), false, new Response(HttpResponseStatus.INTERNAL_SERVER_ERROR), (String) request.get("tag"));
             e.printStackTrace();
         }
     }
@@ -93,15 +98,15 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
                 output.readBytes(fos, output.readableBytes());
                 fos.flush();
             } catch (IOException e) {
-                sendMessage(ctx.channel(), new Response(500), "error");
+                sendMessage(ctx.channel(), false, new Response(500), "error");
             }
         } else {
-            sendMessage(ctx.channel(), new Response(HttpResponseStatus.UNAUTHORIZED), "error");
+            sendMessage(ctx.channel(), false, new Response(HttpResponseStatus.UNAUTHORIZED), "error");
         }
     }
 
     public static void action(final UserSession session, final ResponseAction action, final Object data) {
-        action(WebsocketInfo.USER_CHANNEL_MAP.get(session), action, data, new Response(0, ""));
+        action(WebsocketInfo.USER_CHANNEL_MAP.get(session.getUuid()), action, data, new Response(0, ""));
     }
 
     public static Response action(final Channel channel, final ResponseAction action, final Object data, final Response response) {
@@ -110,19 +115,31 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
         }
         switch (action) {
             case LOG_IN:
-                WebsocketInfo.CHANNEL_USER_MAP.put(channel, (UserSession) data);
-                WebsocketInfo.USER_CHANNEL_MAP.put((UserSession) data, channel);
+                WebsocketInfo.CHANNEL_USER_MAP.put(channel, ((UserSession) data).getUuid());
+                WebsocketInfo.USER_CHANNEL_MAP.put(((UserSession) data).getUuid(), channel);
+                WebsocketInfo.USER_SESSIONS_IN_USE.put(((UserSession) data).getUuid(), (UserSession) data);
                 break;
             case LOG_OUT:
                 WebsocketInfo.CHANNEL_USER_MAP.remove(channel);
-                WebsocketInfo.USER_CHANNEL_MAP.remove(data);
+                WebsocketInfo.USER_CHANNEL_MAP.remove(((UserSession) data).getUuid());
+                WebsocketInfo.USER_SESSIONS_IN_USE.remove(((UserSession) data).getUuid());
+                break;
+            case LOG_OUT_ALL:
+                System.out.println(((List<UserSession>) data).size());
+                for (UserSession session : (List<UserSession>) data) {
+                    Channel logoutChannel = WebsocketInfo.USER_CHANNEL_MAP.get(session.getUuid());
+                    System.err.println(logoutChannel);
+                    if (logoutChannel == null) continue;
+                    sendMessage(logoutChannel, true, new Response(200, "LOGGED_OUT"), "user-info");
+                    action(logoutChannel, ResponseAction.LOG_OUT, session, null);
+                }
                 break;
             case UPLOAD_BREAKUP:
                 String fileName = WebsocketInfo.FILE_UPLOAD_MAP.get(channel).getUuid();
 
                 // delete file in database
                 Map<?, ?> delData = JsonUtils.getGSON().fromJson("{\"material_uuid\": \"" + fileName + "\"}", Map.class);
-                UserSession userSession = WebsocketInfo.CHANNEL_USER_MAP.get(channel);
+                UserSession userSession = WebsocketInfo.getUserSession(channel);
                 User user = null;
                 if (userSession != null) {
                     user = userSession.getUser();
@@ -137,7 +154,7 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
                 break;
             case UPLOAD_START:
                 if (WebsocketInfo.FILE_UPLOAD_MAP.containsKey(channel)) {
-                    sendMessage(channel, new Response(HttpResponseStatus.OK, "NOT closed upload is going to be deleted"), "upload");
+                    sendMessage(channel, true, new Response(HttpResponseStatus.OK, "NOT closed upload is going to be deleted"), "upload");
                     action(channel, ResponseAction.UPLOAD_BREAKUP, data, response);
                 }
                 try {
@@ -175,12 +192,12 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
         return response;
     }
 
-    public static void sendMessage(final UserSession userSession, final Response response, final String tag) {
-        sendMessage(WebsocketInfo.USER_CHANNEL_MAP.get(userSession), response, tag);
+    public static void sendMessage(final UserSession userSession, final boolean notification, final Response response, final String tag) {
+        sendMessage(WebsocketInfo.USER_CHANNEL_MAP.get(userSession.getUuid()), notification, response, tag);
     }
 
-    public static void sendMessage(final Channel channel, final Response response, final String tag) {
-        JsonObject message = JsonBuilder.create("tag", tag)
+    public static void sendMessage(final Channel channel, final boolean notification, final Response response, final String tag) {
+        JsonObject message = JsonBuilder.create(notification ? "notification-tag" : "tag", tag)
                 .add("status", response.statusAsString())
                 .add("data", response.getMessage())
                 .build();
@@ -192,7 +209,7 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
     }
 
     public static void sendFile(final UserSession userSession, final File file) {
-        sendFile(WebsocketInfo.USER_CHANNEL_MAP.get(userSession), file);
+        sendFile(WebsocketInfo.USER_CHANNEL_MAP.get(userSession.getUuid()), file);
     }
 
     public static void sendFile(final Channel channel, final File file) {
@@ -210,6 +227,6 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
     @Override
     public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) throws Exception {
         super.exceptionCaught(ctx, cause);
-        sendMessage(ctx.channel(), new Response(500), "error");
+        sendMessage(ctx.channel(), false, new Response(500), "error");
     }
 }
