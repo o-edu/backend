@@ -10,10 +10,13 @@ export class WebsocketService {
 
   websocket: WebSocket;
   online = new Subject<boolean>();
-  responseString = new Subject<string>();
-  responseBinary = new Subject<any>();
+  responseString = new Subject<JSON>();
+  responseBinary = new Subject<Blob>();
 
   constructor() {
+    this.online.subscribe(i => {
+      console.log(i ? 'conntected' : 'disconnected');
+    });
   }
 
   connect(url: string = environment.uri): void {
@@ -24,10 +27,13 @@ export class WebsocketService {
       console.log(evt.type);
       if (evt.data instanceof Blob) {
         console.log(evt.data);
+        this.responseBinary.next(evt.data);
       } else {
         console.log(JSON.parse(evt.data));
+        this.responseString.next(JSON.parse(evt.data));
       }
     };
+    this.websocket.onerror = (e) => console.log(e);
   }
 
   /*
@@ -62,7 +68,7 @@ export class WebsocketService {
   sendFile(file: File): void{
     console.log(file.size / 65000 + ' parts');
     for (let i = 0; i < file.size; i += 65000) {
-      const filePart: Blob = file.slice(i, i + 6500);
+      const filePart: Blob = file.slice(i, i + 65000);
       this.websocket.send(filePart);
     }
     console.log('finished');

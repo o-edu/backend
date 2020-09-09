@@ -1,9 +1,9 @@
 <div #url>
-  <textarea #server></textarea>
+  <textarea rows="1" #server></textarea>
   <button (click)="connect()">connect</button>
 </div>
 <div #req>
-  <textarea #text></textarea>
+  <textarea rows="10" #text></textarea>
   <button (click)="request(text.value)">request</button>
 </div>
 <div #fileTransfer>
