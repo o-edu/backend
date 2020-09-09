@@ -1,0 +1,18 @@
+package net.oedu.backend.data.repositories.course;
+
+import net.oedu.backend.base.sql.models.AutoIdRepository;
+import net.oedu.backend.data.entities.course.Course;
+import net.oedu.backend.data.entities.user.User;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface CourseRepository extends AutoIdRepository<Course> {
+
+    List<Course> findCoursesByCreator(User creator);
+
+    List<Course> findCoursesByParentCourse(Course parentCourse);
+
+    Course findCourseByParentCourseAndName(Course parentCourse, String name);
+}

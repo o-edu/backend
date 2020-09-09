@@ -1,0 +1,6 @@
+.idea
+.gradle
+*/lombok.config
+*.class
+*/build
+*/buildOutputCleanup

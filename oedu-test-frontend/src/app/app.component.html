@@ -1,0 +1,12 @@
+<div #url>
+  <textarea #server></textarea>
+  <button (click)="connect()">connect</button>
+</div>
+<div #req>
+  <textarea #text></textarea>
+  <button (click)="request(text.value)">request</button>
+</div>
+<div #fileTransfer>
+  <input #file type="file">
+  <button (click)="sendFile(file.files)">send file</button>
+</div>

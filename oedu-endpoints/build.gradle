@@ -1,0 +1,4 @@
+dependencies {
+    implementation project(':oedu-base')
+    implementation project(':oedu-data')
+}

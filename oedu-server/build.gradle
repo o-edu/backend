@@ -1,0 +1,21 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation project(":oedu-base")
+    implementation project(":oedu-data")
+    implementation project(":oedu-endpoints")
+}
+
+application {
+    applicationName = "server"
+    mainClassName = "net.oedu.backend.server.Server"
+}
+
+task start(type: JavaExec) {
+    dependsOn installDist
+    classpath fileTree("${buildDir}/install/server/lib").matching { "*.jar" }.files
+    main "net.oedu.backend.server.Server"
+    workingDir file(projectDir)
+}

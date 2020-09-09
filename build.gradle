@@ -1,0 +1,27 @@
+plugins {
+    id 'base'
+    id 'io.freefair.git-version' version '5.1.1'
+    id 'io.freefair.aggregate-javadoc' version '5.1.1'
+    id 'io.freefair.javadoc-utf-8' version '5.1.1'
+    id 'io.freefair.lombok' version '5.1.1' apply false
+}
+
+group 'net.o-edu'
+version '0.0.1'
+
+allprojects {
+    group 'net.o-edu'
+    version version.toString().startsWith('v') ? version.toString().substring(1) : version
+}
+
+subprojects {
+    apply from: "${rootDir}/gradle/java.gradle"
+}
+
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+}

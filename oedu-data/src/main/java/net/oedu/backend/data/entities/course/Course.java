@@ -1,0 +1,31 @@
+package net.oedu.backend.data.entities.course;
+
+import com.google.gson.JsonObject;
+import lombok.Data;
+import net.oedu.backend.base.json.JsonBuilder;
+import net.oedu.backend.base.json.JsonSerializable;
+import net.oedu.backend.base.sql.models.TableModelAutoId;
+import net.oedu.backend.data.entities.user.User;
+
+import javax.persistence.Entity;
+import javax.persistence.ManyToOne;
+
+@Data
+@Entity
+public final class Course extends TableModelAutoId implements JsonSerializable {
+
+
+    private String name;
+    @ManyToOne
+    private User creator;
+    @ManyToOne
+    private Course parentCourse;
+
+    @Override
+    public JsonObject serializeJson() {
+        return JsonBuilder.create("name", name)
+                .add("creator", creator)
+                .add("parent_course", parentCourse.getUuid())
+                .build();
+    }
+}
