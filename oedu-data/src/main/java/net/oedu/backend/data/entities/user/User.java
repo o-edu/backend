@@ -1,7 +1,8 @@
 package net.oedu.backend.data.entities.user;
 
 import com.google.gson.JsonObject;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import net.oedu.backend.base.json.JsonBuilder;
 import net.oedu.backend.base.json.JsonSerializable;
 import net.oedu.backend.base.security.Hashing;
@@ -15,6 +16,8 @@ import java.time.OffsetDateTime;
 
 @Data
 @Entity
+@Getter
+@Setter
 public final class User extends TableModelAutoId implements JsonSerializable {
 
     @Column(unique = true)
