@@ -99,13 +99,13 @@ public final class UserEndpoint extends EndpointClass {
 
     @Endpoint("session")
     public Response sessionLogin(@EndpointParameter(value = "user", type = EndpointParameterType.USER, optional = true) final User u,
-                                 @EndpointParameter("token") final String token) {
+                                 @EndpointParameter("token") final UUID token) {
 
         if (u != null) {
             return new Response(400, "ALREADY_LOGGED_IN");
         }
 
-        Optional<UserSession> session = userSessionRepository.findById(UUID.fromString(token));
+        Optional<UserSession> session = userSessionRepository.findById(token);
         if (session.isEmpty()) {
             return new Response(400, "INVALID_SESSION");
         }
@@ -117,8 +117,8 @@ public final class UserEndpoint extends EndpointClass {
 
     @Endpoint("delete_session")
     public Response deleteSession(@EndpointParameter(value = "user", type = EndpointParameterType.USER, optional = true) final User user,
-                                  @EndpointParameter("session_uuid") final String sessionUuid) {
-        Optional<UserSession> session = userSessionRepository.findById(UUID.fromString(sessionUuid));
+                                  @EndpointParameter("token") final UUID token) {
+        Optional<UserSession> session = userSessionRepository.findById(token);
         if (session.isEmpty()) return new Response(400, "NO_SUCH_SESSION");
         if (user != null) ServerUtils.action(session.get(), ResponseAction.LOG_OUT, session.get());
         session.ifPresent(userSession -> userSessionRepository.delete(userSession));

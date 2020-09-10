@@ -35,13 +35,13 @@ public final class CourseEndpoints extends EndpointClass {
 
     @Endpoint("create")
     public Response createRepository(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
-                                     @EndpointParameter(value = "parent_repository_uuid", optional = true) final String parentRepositoryUuid,
+                                     @EndpointParameter(value = "parent_repository_uuid", optional = true) final UUID parentRepositoryUuid,
                                      @EndpointParameter("name") final String name) {
 
         if (name.length() > Course.MAX_NAME_LENGTH) {
             return new Response(HttpResponseStatus.BAD_REQUEST, "NAME_TOO_LONG");
         }
-        if (parentRepositoryUuid != null && courseRepository.findById(UUID.fromString(parentRepositoryUuid)).isEmpty()) {
+        if (parentRepositoryUuid != null && courseRepository.findById(parentRepositoryUuid).isEmpty()) {
             return new Response(HttpResponseStatus.BAD_REQUEST, "NO_SUCH_PARENT_COURSE");
         }
         if (parentRepositoryUuid == null) {
@@ -50,7 +50,7 @@ public final class CourseEndpoints extends EndpointClass {
             }
             return new Response(HttpResponseStatus.BAD_REQUEST, "NO_RIGHTS_HERE");
         }
-        Course parentCourse = courseRepository.findById(UUID.fromString(parentRepositoryUuid)).get();
+        Course parentCourse = courseRepository.findById(parentRepositoryUuid).get();
         RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(parentCourse, user.getUserRole()).orElse(null);
         UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(parentCourse, user).orElse(null);
 
@@ -67,9 +67,9 @@ public final class CourseEndpoints extends EndpointClass {
 
     @Endpoint("has_access")
     public Response hasAccess(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
-                              @EndpointParameter("course_uuid") final String courseUuid,
+                              @EndpointParameter("course_uuid") final UUID courseUuid,
                               @EndpointParameter("type") final String type) {
-        Course course = courseRepository.findById(UUID.fromString(courseUuid)).orElse(null);
+        Course course = courseRepository.findById(courseUuid).orElse(null);
         if (course == null) {
             return new Response(400, "NO_VALID_COURSE");
         }
@@ -80,8 +80,8 @@ public final class CourseEndpoints extends EndpointClass {
 
     @Endpoint("delete")
     public Response deleteCourse(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
-                                 @EndpointParameter("course_uuid") final String courseUuid) {
-        Course course = courseRepository.findById(UUID.fromString(courseUuid)).orElse(null);
+                                 @EndpointParameter("course_uuid") final UUID courseUuid) {
+        Course course = courseRepository.findById(courseUuid).orElse(null);
         if (course == null) {
             return new Response(400, "NO_SUCH_COURSE");
         }

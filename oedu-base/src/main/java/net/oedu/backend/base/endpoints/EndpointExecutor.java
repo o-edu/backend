@@ -79,6 +79,13 @@ public class EndpointExecutor {
             switch (param.type()) {
                 case NORMAL:
                     arg = data.getOrDefault(param.value(), null);
+                    if (p.getType().equals(UUID.class) && arg != null) {
+                        try {
+                            arg = UUID.fromString((String) arg);
+                        } catch (ClassCastException | IllegalArgumentException e) {
+                            return new Response(400, "\"" + param.value() + "\" must be a string as uuid");
+                        }
+                    }
                     break;
                 case REPOSITORY:
                     arg = applicationContext.getBean(param.value() + "Repository");
@@ -95,7 +102,7 @@ public class EndpointExecutor {
                 if (param.type() != EndpointParameterType.NORMAL) {
                     return new Response(400, "NOT_LOGGED_IN");
                 }
-                return new Response(500, "INVALID_ARGUMENTS");
+                return new Response(400, "Argument \"" + param.value() + "\" must be specified and not null");
             }
             params.add(arg);
         }
