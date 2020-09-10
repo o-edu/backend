@@ -10,6 +10,14 @@ import java.util.List;
 @Repository
 public interface CourseRepository extends AutoIdRepository<Course> {
 
+    default Course createCourse(final Course parentCourse, final String name, final User creator) {
+        Course course = new Course();
+        course.setCreator(creator);
+        course.setName(name);
+        course.setParentCourse(parentCourse);
+        return this.saveAndFlush(course);
+    }
+
     List<Course> findCoursesByCreator(User creator);
 
     List<Course> findCoursesByParentCourse(Course parentCourse);

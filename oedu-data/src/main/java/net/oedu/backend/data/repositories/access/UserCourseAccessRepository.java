@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 
 
 @Repository
@@ -20,7 +21,7 @@ public interface UserCourseAccessRepository extends AutoIdRepository<UserCourseA
 
     List<UserCourseAccess> findAllByCourse(Course course);
 
-    List<UserCourseAccess> findAllByCourseAndUser(Course course, User user);
+    Optional<UserCourseAccess> findByCourseAndUser(Course course, User user);
 
     @Transactional
     void deleteAllByCourse(Course course);

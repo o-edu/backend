@@ -64,11 +64,10 @@ public final class UserEndpoint extends EndpointClass {
             role.setName("default");
             userRoleRepository.save(role);
         }
-        User user = User.createUser(userRepository, name, mail, password, userRoleRepository.findByStatus(0));
-        UserSession userSession = UserSession.create(userSessionRepository, user);
+        User user = userRepository.createUser(name, mail, password, userRoleRepository.findByStatus(0));
+        UserSession userSession = userSessionRepository.create(user);
 
-
-        return new Response(200, UserSession.create(userSessionRepository, user))
+        return new Response(200, userSession)
                 .setAction(ResponseAction.LOG_IN, userSession);
     }
 
@@ -87,7 +86,7 @@ public final class UserEndpoint extends EndpointClass {
             if (Hashing.verify(password, user.getPasswordHash())) {
                 user.setLastLogin(OffsetDateTime.now());
                 userRepository.save(user);
-                UserSession userSession = UserSession.create(userSessionRepository, user);
+                UserSession userSession = userSessionRepository.create(user);
                 response = new Response(200, userSession)
                         .setAction(ResponseAction.LOG_IN, userSession);
             }
@@ -112,7 +111,7 @@ public final class UserEndpoint extends EndpointClass {
         }
         User user = session.get().getUser();
         userSessionRepository.delete(session.get());
-        UserSession userSession = UserSession.create(userSessionRepository, user);
+        UserSession userSession = userSessionRepository.create(user);
         return new Response(200, userSession).setAction(ResponseAction.LOG_IN, userSession);
     }
 

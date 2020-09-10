@@ -67,8 +67,8 @@ public final class FileEndpoint extends EndpointClass {
         } else if (!user.isServerAdministrator()) {
             return new Response(HttpResponseStatus.FORBIDDEN, "NO_ACCESS_HERE");
         }
-        if (roleCourseAccessRepository.findAllByCourseAndUserRole(course, user.getUserRole()).isEmpty()
-                && userCourseAccessRepository.findAllByCourseAndUser(course, user).isEmpty() && !user.isServerAdministrator()) {
+        if (roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).isEmpty()
+                && userCourseAccessRepository.findByCourseAndUser(course, user).isEmpty() && !user.isServerAdministrator()) {
             return new Response(0, "NO_COURSE_ACCESS");
         }
         Material material = Material.create(materialRepository, name, fileEnd, course, user);
@@ -108,7 +108,7 @@ public final class FileEndpoint extends EndpointClass {
         userAccess.ifPresent(userMaterialAccess -> types.add(userMaterialAccess.getAccessType()));
         roleAccess.ifPresent(roleMaterialAccess -> types.add(roleMaterialAccess.getAccessType()));
 
-        if (!types.contains(AccessType.ADMIN) && !material.getCreator().getUuid().equals(user.getUuid()) && !user.isServerAdministrator()) {
+        if (!types.contains(AccessType.ADMIN) && !material.getCreator().equals(user) && !user.isServerAdministrator()) {
             return new Response(HttpResponseStatus.UNAUTHORIZED, "ACCESS_DENIED");
         }
 
@@ -144,7 +144,7 @@ public final class FileEndpoint extends EndpointClass {
         AtomicBoolean hasReadAccess = new AtomicBoolean(false);
         userAccess.ifPresent(access -> hasReadAccess.set(true));
         roleAccess.ifPresent(access -> hasReadAccess.set(true));
-        if (user.isServerAdministrator() || material.getCreator().getUuid().equals(user.getUuid())) hasReadAccess.set(true);
+        if (user.isServerAdministrator() || material.getCreator().equals(user)) hasReadAccess.set(true);
 
         if (!hasReadAccess.get()) {
             return new Response(HttpResponseStatus.UNAUTHORIZED, "ACCESS_DENIED");

@@ -7,7 +7,9 @@ import net.oedu.backend.data.entities.course.Course;
 import net.oedu.backend.data.entities.user.UserRole;
 import org.springframework.stereotype.Repository;
 
+import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RoleCourseAccessRepository extends AutoIdRepository<RoleCourseAccess> {
@@ -18,9 +20,8 @@ public interface RoleCourseAccessRepository extends AutoIdRepository<RoleCourseA
 
     List<RoleCourseAccess> findAllByCourse(Course course);
 
-    List<RoleCourseAccess> findAllByCourseAndUserRole(Course course, UserRole userRole);
+    Optional<RoleCourseAccess> findByCourseAndUserRole(Course course, UserRole userRole);
 
-
-
+    @Transactional
     void deleteAllByCourse(Course course);
 }

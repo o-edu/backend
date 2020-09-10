@@ -29,6 +29,10 @@ public class Response {
         this(HttpResponseStatus.valueOf(status), message.serializeJson());
     }
 
+    public Response(final int status, final JsonObject jsonObject) {
+        this(HttpResponseStatus.valueOf(status), jsonObject);
+    }
+
     public Response(final HttpResponseStatus httpResponseStatus, final JsonSerializable message) {
         this(httpResponseStatus, message.serializeJson());
     }
