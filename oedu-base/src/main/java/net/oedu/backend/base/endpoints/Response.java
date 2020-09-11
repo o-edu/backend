@@ -1,5 +1,6 @@
 package net.oedu.backend.base.endpoints;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import lombok.Getter;
@@ -13,7 +14,7 @@ import net.oedu.backend.base.json.JsonUtils;
 public class Response {
 
     private final HttpResponseStatus status;
-    private final JsonObject message;
+    private final JsonElement message;
     private ResponseAction responseAction = null;
     private Object data = null;
 
@@ -33,8 +34,16 @@ public class Response {
         this(HttpResponseStatus.valueOf(status), jsonObject);
     }
 
+    public Response(final int status, final Object object) {
+        this(HttpResponseStatus.valueOf(status), JsonUtils.toJson(object));
+    }
+
     public Response(final HttpResponseStatus httpResponseStatus, final JsonSerializable message) {
         this(httpResponseStatus, message.serializeJson());
+    }
+
+    public Response(final HttpResponseStatus httpResponseStatus, final Object object) {
+        this(httpResponseStatus, JsonUtils.toJson(object));
     }
 
     public Response(final HttpResponseStatus httpResponseStatus, final String message) {

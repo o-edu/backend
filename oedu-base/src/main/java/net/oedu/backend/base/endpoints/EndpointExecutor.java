@@ -6,6 +6,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 public class EndpointExecutor {
@@ -73,18 +74,40 @@ public class EndpointExecutor {
 
     private Response execute(final Object object, final Method end, final Map<?, ?> data) {
         List<Object> params = new ArrayList<>();
-        for (Parameter p : end.getParameters()) {
+        for (int i = 0; i < end.getParameters().length; i++) {
+            Parameter p = end.getParameters()[i];
             EndpointParameter param = p.getAnnotation(EndpointParameter.class);
             Object arg = null;
             switch (param.type()) {
                 case NORMAL:
                     arg = data.getOrDefault(param.value(), null);
-                    if (p.getType().equals(UUID.class) && arg != null) {
+                    if (arg == null) {
+                        break;
+                    }
+                    if (p.getType().equals(UUID.class)) {
                         try {
                             arg = UUID.fromString((String) arg);
                         } catch (ClassCastException | IllegalArgumentException e) {
                             return new Response(400, "\"" + param.value() + "\" must be a string as uuid");
                         }
+                    }
+                    if (p.getType().equals(List.class)
+                            && ((ParameterizedType) end.getGenericParameterTypes()[i]).getActualTypeArguments()[0].equals(UUID.class)) {
+                        List<UUID> result = new ArrayList<>();
+                        for (int j = 0; j < ((List<?>) arg).size(); j++) {
+                            if (((List<?>) arg).get(j) == null) {
+                                result.add(null);
+                            } else if (((List<?>) arg).get(j) instanceof String) {
+                                try {
+                                    result.add(UUID.fromString((String) ((List<?>) arg).get(j)));
+                                } catch (IllegalArgumentException | ClassCastException e) {
+                                    return new Response(400, "\"" + param.value() + "\" must be a list of strings as uuid");
+                                }
+                            } else {
+                                return new Response(400, "\"" + param.value() + "\" must be a list of strings as uuid");
+                            }
+                        }
+                        arg = result;
                     }
                     break;
                 case REPOSITORY:
