@@ -1,4 +1,4 @@
-package net.oedu.backend.endpoints;
+package net.oedu.backend.endpoints.course;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
 import net.oedu.backend.base.endpoints.*;
@@ -12,7 +12,7 @@ import net.oedu.backend.data.repositories.access.RoleCourseAccessRepository;
 import net.oedu.backend.data.repositories.access.UserCourseAccessRepository;
 import net.oedu.backend.data.repositories.course.CourseRepository;
 
-import java.util.UUID;
+import java.util.*;
 
 public final class CourseEndpoints extends EndpointClass {
 
@@ -94,5 +94,27 @@ public final class CourseEndpoints extends EndpointClass {
         } else {
             return new Response(400, "ACCESS_DENIED");
         }
+    }
+
+    @Endpoint("list_courses")
+    public Response listCourses(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
+                                @EndpointParameter(value = "parent_course_uuid", optional = true) final UUID parentCourseUuid) {
+        Set<Course> courseSet = new HashSet<>();
+
+        if (parentCourseUuid == null) {
+            courseSet.addAll(userCourseAccessRepository.findAllReadable(user));
+            courseSet.addAll(roleCourseAccessRepository.findAllReadable(user.getUserRole()));
+        } else {
+            Course parentCourse = courseRepository.findById(parentCourseUuid).orElse(null);
+            if (parentCourse == null) {
+                return new Response(400, "UNKNOWN_COURSE");
+            }
+            courseSet.addAll(courseRepository.findCoursesByParentCourse(parentCourse));
+            courseSet.removeIf(course -> !course.hasAccess(user,
+                    roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null),
+                    userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null),
+                    AccessType.READ));
+        }
+        return new Response(200, courseSet);
     }
 }

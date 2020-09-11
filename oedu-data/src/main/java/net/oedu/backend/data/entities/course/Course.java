@@ -35,9 +35,9 @@ public final class Course extends TableModelAutoId implements JsonSerializable {
         if (user.isServerAdministrator() || creator.equals(user)) {
             return true;
         }
-        boolean value;
-        value = roleCourseAccess.getAccessType().hasAccess(minAccessType);
-        if (!value) value = userCourseAccess.getAccessType().hasAccess(minAccessType);
+        boolean value = false;
+        if (roleCourseAccess != null) value = roleCourseAccess.getAccessType().hasAccess(minAccessType);
+        if (!value && userCourseAccess != null) value = userCourseAccess.getAccessType().hasAccess(minAccessType);
         return value;
     }
 

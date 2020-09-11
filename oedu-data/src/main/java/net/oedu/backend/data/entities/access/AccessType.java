@@ -1,8 +1,10 @@
 package net.oedu.backend.data.entities.access;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 @AllArgsConstructor
+@Getter
 public enum AccessType {
 
     READ(0),

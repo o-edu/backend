@@ -4,9 +4,7 @@ package net.oedu.backend.endpoints;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import net.oedu.backend.base.endpoints.*;
 import net.oedu.backend.base.server.ServerUtils;
-import net.oedu.backend.data.entities.access.AccessType;
-import net.oedu.backend.data.entities.access.RoleMaterialAccess;
-import net.oedu.backend.data.entities.access.UserMaterialAccess;
+import net.oedu.backend.data.entities.access.*;
 import net.oedu.backend.data.entities.course.Course;
 import net.oedu.backend.data.entities.material.Material;
 import net.oedu.backend.data.entities.user.User;
@@ -59,7 +57,7 @@ public final class FileEndpoint extends EndpointClass {
                                 @EndpointParameter("file_end") final String fileEnd) {
         Optional<Course> courseOptional = Optional.empty();
         if (courseUuid != null) {
-             courseOptional = courseRepository.findById(courseUuid);
+            courseOptional = courseRepository.findById(courseUuid);
         }
         Course course = null;
         if (courseOptional.isPresent()) {
@@ -139,7 +137,7 @@ public final class FileEndpoint extends EndpointClass {
         Optional<Material> mat = materialRepository.findById(materialUuid);
         if (mat.isEmpty()) return new Response(HttpResponseStatus.BAD_REQUEST, "NO_SUCH_FILE");
         Material material = mat.get();
-        Optional<UserMaterialAccess> userAccess =  userMaterialAccessRepository.findByUserAndMaterial(user, material);
+        Optional<UserMaterialAccess> userAccess = userMaterialAccessRepository.findByUserAndMaterial(user, material);
         Optional<RoleMaterialAccess> roleAccess = roleMaterialAccessRepository.findByUserRoleAndMaterial(user.getUserRole(), material);
         AtomicBoolean hasReadAccess = new AtomicBoolean(false);
         userAccess.ifPresent(access -> hasReadAccess.set(true));
@@ -152,5 +150,25 @@ public final class FileEndpoint extends EndpointClass {
 
         ServerUtils.sendFile(session, new File(String.valueOf(material.getUuid())));
         return new Response(HttpResponseStatus.OK, material);
+    }
+
+    @Endpoint("list")
+    public Response listFiles(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
+                              @EndpointParameter(value = "parent_course_uuid", optional = true) final UUID parentCourseUuid) {
+        if (parentCourseUuid == null) {
+            return new Response(200, materialRepository.findMaterialsByCourse(null));
+        } else {
+            Course course = courseRepository.findById(parentCourseUuid).orElse(null);
+            if (course == null) {
+                return new Response(400, "UNKNOWN_COURSE");
+            }
+            UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
+            RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
+            if (!course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.READ)) {
+                return new Response(400, "ACCESS_DENIED");
+            }
+
+            return new Response(200, materialRepository.findMaterialsByCourse(course));
+        }
     }
 }
