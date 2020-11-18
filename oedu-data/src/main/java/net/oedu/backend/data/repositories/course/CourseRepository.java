@@ -6,6 +6,7 @@ import net.oedu.backend.data.entities.user.User;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CourseRepository extends AutoIdRepository<Course> {
@@ -22,5 +23,5 @@ public interface CourseRepository extends AutoIdRepository<Course> {
 
     List<Course> findCoursesByParentCourse(Course parentCourse);
 
-    Course findCourseByParentCourseAndName(Course parentCourse, String name);
+    Optional<Course> findCourseByParentCourseAndName(Course parentCourse, String name);
 }
