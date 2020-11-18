@@ -4,7 +4,6 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import net.oedu.backend.base.endpoints.*;
 import net.oedu.backend.base.security.Hashing;
 import net.oedu.backend.base.server.ServerUtils;
-import net.oedu.backend.data.entities.user.UserRole;
 import net.oedu.backend.data.entities.user.UserSession;
 import net.oedu.backend.data.repositories.access.UserCourseAccessRepository;
 import net.oedu.backend.data.repositories.access.UserMaterialAccessRepository;
@@ -58,14 +57,19 @@ public final class UserEndpoint extends EndpointClass {
             return new Response(400, "ALREADY_LOGGED_IN");
         }
 
-        if (userRoleRepository.findByStatus(0) == null) {
-            UserRole role = new UserRole();
-            role.setStatus((short) 0);
-            role.setName("default");
-            userRoleRepository.save(role);
+        if (userRepository.findUserByName(name).isPresent()) {
+            return new Response(400, "NAME_ALREADY_EXISTS");
         }
-        User user = userRepository.createUser(name, mail, password, userRoleRepository.findByStatus(0));
+
+        if (userRepository.findUserByMail(mail).isPresent()) {
+            return new Response(400, "MAIL_ALREADY_EXISTS");
+        }
+
+
+        User user = userRepository.createUser(name, mail, password, null);
         UserSession userSession = userSessionRepository.create(user);
+
+        //TODO normal user roles?
 
         return new Response(200, userSession)
                 .setAction(ResponseAction.LOG_IN, userSession);
@@ -82,7 +86,7 @@ public final class UserEndpoint extends EndpointClass {
 
         Response response = new Response(400, "ACCESS_DENIED");
         try {
-            User user = userRepository.findUserByName(name);
+            User user = userRepository.findUserByName(name).orElse(null);
             if (Hashing.verify(password, user.getPasswordHash())) {
                 user.setLastLogin(OffsetDateTime.now());
                 userRepository.save(user);

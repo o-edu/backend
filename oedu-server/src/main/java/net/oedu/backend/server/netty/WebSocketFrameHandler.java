@@ -34,7 +34,6 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
     @Override
     protected void channelRead0(final ChannelHandlerContext ctx, final WebSocketFrame frame) throws Exception {
         // ping and pong frames already handled
-
         if (frame instanceof TextWebSocketFrame) {
             onTextMessage(ctx, (TextWebSocketFrame) frame);
         } else if (frame instanceof BinaryWebSocketFrame) {

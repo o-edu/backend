@@ -55,21 +55,24 @@ public final class FileEndpoint extends EndpointClass {
                                 @EndpointParameter(value = "course_uuid", optional = true) final UUID courseUuid,
                                 @EndpointParameter("name") final String name,
                                 @EndpointParameter("file_end") final String fileEnd) {
-        Optional<Course> courseOptional = Optional.empty();
-        if (courseUuid != null) {
-            courseOptional = courseRepository.findById(courseUuid);
-        }
         Course course = null;
-        if (courseOptional.isPresent()) {
-            course = courseOptional.get();
-        } else if (!user.isServerAdministrator()) {
-            return new Response(HttpResponseStatus.FORBIDDEN, "NO_ACCESS_HERE");
+        if (courseUuid == null) {
+             if (!user.isServerAdministrator())
+                return new Response(HttpResponseStatus.FORBIDDEN, "NO_ACCESS_IN_ROOT");
+        } else {
+            course = courseRepository.findById(courseUuid).orElse(null);
+            if (course == null) {
+                return new Response(HttpResponseStatus.BAD_REQUEST, "NO_SUCH_COURSE");
+            }
+            if (roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).isEmpty()
+                    && userCourseAccessRepository.findByCourseAndUser(course, user).isEmpty()
+                    && !user.isServerAdministrator()) {
+                return new Response(0, "NO_COURSE_ACCESS");
+            }
         }
-        if (roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).isEmpty()
-                && userCourseAccessRepository.findByCourseAndUser(course, user).isEmpty() && !user.isServerAdministrator()) {
-            return new Response(0, "NO_COURSE_ACCESS");
-        }
-        Material material = Material.create(materialRepository, name, fileEnd, course, user);
+
+
+        final Material material = Material.create(materialRepository, name, fileEnd, course, user);
         return new Response(200, material).setAction(ResponseAction.UPLOAD_START, material);
     }
 

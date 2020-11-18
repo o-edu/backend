@@ -34,23 +34,23 @@ public final class CourseEndpoints extends EndpointClass {
     }
 
     @Endpoint("create")
-    public Response createRepository(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
-                                     @EndpointParameter(value = "parent_repository_uuid", optional = true) final UUID parentRepositoryUuid,
-                                     @EndpointParameter("name") final String name) {
+    public Response createCourse(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
+                                 @EndpointParameter(value = "parent_course_uuid", optional = true) final UUID parentCourseUuid,
+                                 @EndpointParameter("name") final String name) {
 
         if (name.length() > Course.MAX_NAME_LENGTH) {
             return new Response(HttpResponseStatus.BAD_REQUEST, "NAME_TOO_LONG");
         }
-        if (parentRepositoryUuid != null && courseRepository.findById(parentRepositoryUuid).isEmpty()) {
+        if (parentCourseUuid != null && courseRepository.findById(parentCourseUuid).isEmpty()) {
             return new Response(HttpResponseStatus.BAD_REQUEST, "NO_SUCH_PARENT_COURSE");
         }
-        if (parentRepositoryUuid == null) {
+        if (parentCourseUuid == null) {
             if (user.isServerAdministrator()) {
                 return new Response(200, courseRepository.createCourse(null, name, user));
             }
             return new Response(HttpResponseStatus.BAD_REQUEST, "NO_RIGHTS_HERE");
         }
-        Course parentCourse = courseRepository.findById(parentRepositoryUuid).get();
+        Course parentCourse = courseRepository.findById(parentCourseUuid).get();
         RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(parentCourse, user.getUserRole()).orElse(null);
         UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(parentCourse, user).orElse(null);
 
@@ -68,14 +68,25 @@ public final class CourseEndpoints extends EndpointClass {
     @Endpoint("has_access")
     public Response hasAccess(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
                               @EndpointParameter("course_uuid") final UUID courseUuid,
-                              @EndpointParameter("type") final String type) {
-        Course course = courseRepository.findById(courseUuid).orElse(null);
+                              @EndpointParameter(value = "type", optional = true) final String type) {
+        final Course course = courseRepository.findById(courseUuid).orElse(null);
+        AccessType accessType = type == null ? AccessType.READ : AccessType.valueOf(type);
         if (course == null) {
             return new Response(400, "NO_VALID_COURSE");
         }
-        RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
-        UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
-        return new Response(200, JsonBuilder.create("access", course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.valueOf(type))).build());
+        final RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
+        final UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
+        return new Response(200, JsonBuilder.create("access", course.hasAccess(user, roleCourseAccess, userCourseAccess, accessType)).build());
+    }
+
+    @Endpoint("info")
+    public Response courseInfo(@EndpointParameter("course_uuid") final UUID courseUuid) {
+        Course course = courseRepository.findById(courseUuid).orElse(null);
+        if (course == null) {
+            return new Response(400, "NO_SUCH_COURSE");
+        } else {
+            return new Response(200, course);
+        }
     }
 
     @Endpoint("delete")

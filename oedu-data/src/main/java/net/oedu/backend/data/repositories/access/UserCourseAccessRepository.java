@@ -24,7 +24,7 @@ public interface UserCourseAccessRepository extends AutoIdRepository<UserCourseA
         return this.saveAndFlush(uca);
     }
 
-    @Query("select object (uca.course) from UserCourseAccess as uca where uca.user = ?1")
+    @Query("select uca.course from UserCourseAccess as uca where uca.user = ?1")
     List<Course> findAllReadable(User user);
 
     List<UserCourseAccess> findAllByUser(User user);

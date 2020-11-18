@@ -8,13 +8,14 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends AutoIdRepository<User> {
 
-    User findUserByName(String name);
+    Optional<User> findUserByName(String name);
 
-    User findUserByMail(String mail);
+    Optional<User> findUserByMail(String mail);
 
     List<User> findUsersByUserRole(UserRole userRole);
 

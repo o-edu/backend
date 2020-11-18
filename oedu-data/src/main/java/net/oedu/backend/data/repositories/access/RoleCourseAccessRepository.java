@@ -23,7 +23,7 @@ public interface RoleCourseAccessRepository extends AutoIdRepository<RoleCourseA
         return this.saveAndFlush(uca);
     }
 
-    @Query("select object (rca.course) from RoleCourseAccess as rca where rca.userRole = ?1")
+    @Query("select rca.course from RoleCourseAccess as rca where rca.userRole = ?1")
     List<Course> findAllReadable(UserRole user);
 
     List<RoleCourseAccess> findAllByUserRole(UserRole userRole);

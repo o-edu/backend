@@ -39,7 +39,7 @@ public final class Material extends TableModelAutoId implements JsonSerializable
 
     @Override
     public JsonObject serializeJson() {
-        return JsonBuilder.create("name", name + fileEnd)
+        return JsonBuilder.create("name", name + '.' + fileEnd)
                 .add("material_uuid", getUuid())
                 .add("course", course)
                 .build();

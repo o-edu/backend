@@ -21,6 +21,12 @@ public class TableModelAutoId extends TableModel {
     @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
     private UUID uuid;
 
+    /**
+     * checks for the uuid.
+     *
+     * @param o the other object
+     * @return boolean if the uuid is equal
+     */
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -31,6 +37,9 @@ public class TableModelAutoId extends TableModel {
         return uuid.equals(that.uuid);
     }
 
+    /**
+     * @return hash code of the uuid
+     */
     @Override
     public int hashCode() {
         return uuid.hashCode();

@@ -33,10 +33,11 @@ public final class User extends TableModelAutoId implements JsonSerializable {
     @Override
     public JsonObject serializeJson() {
         return JsonBuilder.create("name", name)
+                .add("uuid", getUuid())
                 .add("mail", mail)
                 .add("creation", creation)
                 .add("last_login", lastLogin)
-                .add("user_role", userRole.serializeJson())
+                .add("user_role", userRole == null ? "null" : userRole.serializeJson())
                 .build();
     }
 }

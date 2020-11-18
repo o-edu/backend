@@ -33,7 +33,7 @@ public final class CourseAccessEndpoints extends EndpointClass {
                       @EndpointParameter(value = "roleCourseAccess", type = EndpointParameterType.REPOSITORY) final RoleCourseAccessRepository roleCourseAccessRepository,
                       @EndpointParameter(value = "userCourseAccess", type = EndpointParameterType.REPOSITORY) final UserCourseAccessRepository userCourseAccessRepository,
                       @EndpointParameter(value = "user", type = EndpointParameterType.REPOSITORY) final UserRepository userRepository,
-                      @EndpointParameter(value = "userCourse", type = EndpointParameterType.REPOSITORY) final UserRoleRepository userRoleRepository) {
+                      @EndpointParameter(value = "userRole", type = EndpointParameterType.REPOSITORY) final UserRoleRepository userRoleRepository) {
         this.courseRepository = courseRepository;
         this.userCourseAccessRepository = userCourseAccessRepository;
         this.roleCourseAccessRepository = roleCourseAccessRepository;
