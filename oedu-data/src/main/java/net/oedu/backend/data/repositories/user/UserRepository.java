@@ -17,8 +17,6 @@ public interface UserRepository extends AutoIdRepository<User> {
 
     Optional<User> findUserByMail(String mail);
 
-    List<User> findUsersByUserRole(UserRole userRole);
-
     List<User> findAllByServerAdministrator(boolean serverAdministrator);
 
     default User createUser(final String name, final String mail, final String pw, final UserRole userRole) {
@@ -28,7 +26,6 @@ public interface UserRepository extends AutoIdRepository<User> {
         user.setPasswordHash(Hashing.hash(pw));
         user.setCreation(OffsetDateTime.now());
         user.setLastLogin(OffsetDateTime.now());
-        user.setUserRole(userRole);
         user.setServerAdministrator(false);
         this.saveAndFlush(user);
         return user;

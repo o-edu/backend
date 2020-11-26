@@ -11,6 +11,7 @@ import net.oedu.backend.data.repositories.access.RoleCourseAccessRepository;
 import net.oedu.backend.data.repositories.access.UserCourseAccessRepository;
 import net.oedu.backend.data.repositories.course.CourseRepository;
 import net.oedu.backend.data.repositories.user.UserRepository;
+import net.oedu.backend.data.repositories.user.UserRoleBindingRepository;
 import net.oedu.backend.data.repositories.user.UserRoleRepository;
 
 import java.util.ArrayList;
@@ -27,13 +28,15 @@ public final class CourseAccessEndpoints extends EndpointClass {
     private UserCourseAccessRepository userCourseAccessRepository;
     private UserRepository userRepository;
     private UserRoleRepository userRoleRepository;
+    private UserRoleBindingRepository userRoleBindingRepository;
 
     @EndpointSetup
     public void setup(@EndpointParameter(value = "course", type = EndpointParameterType.REPOSITORY) final CourseRepository courseRepository,
                       @EndpointParameter(value = "roleCourseAccess", type = EndpointParameterType.REPOSITORY) final RoleCourseAccessRepository roleCourseAccessRepository,
                       @EndpointParameter(value = "userCourseAccess", type = EndpointParameterType.REPOSITORY) final UserCourseAccessRepository userCourseAccessRepository,
                       @EndpointParameter(value = "user", type = EndpointParameterType.REPOSITORY) final UserRepository userRepository,
-                      @EndpointParameter(value = "userRole", type = EndpointParameterType.REPOSITORY) final UserRoleRepository userRoleRepository) {
+                      @EndpointParameter(value = "userRole", type = EndpointParameterType.REPOSITORY) final UserRoleRepository userRoleRepository,
+                      @EndpointParameter(value = "userRoleBinding", type = EndpointParameterType.REPOSITORY) final UserRoleBindingRepository userRoleBindingRepository) {
         this.courseRepository = courseRepository;
         this.userCourseAccessRepository = userCourseAccessRepository;
         this.roleCourseAccessRepository = roleCourseAccessRepository;
@@ -50,11 +53,10 @@ public final class CourseAccessEndpoints extends EndpointClass {
         if (course == null) {
             return new Response(400, "NO_SUCH_COURSE");
         }
-        UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
-        RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
-        if (!course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.EDIT)) {
+        if (!this.hasAccess(user, course, AccessType.EDIT)) {
             return new Response(400, "ACCESS_DENIED");
         }
+
         AccessType accessType;
         try {
             accessType = AccessType.valueOf(type.toUpperCase());
@@ -62,15 +64,16 @@ public final class CourseAccessEndpoints extends EndpointClass {
             return new Response(400, "UNKNOWN_ACCESS_TYPE");
         }
 
-        if (!course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.ADMIN)) {
+        // that users with edit role can't upgrade users to role with edit or higher
+        if (!this.hasAccess(user, course, AccessType.ADMIN)) {
             if (accessType.getLvl() >= AccessType.EDIT.getLvl()) {
                 return new Response(400, "ACCESS_DENIED");
             }
         }
 
-        List<User> userList = new ArrayList<>();
+        final List<User> userList = new ArrayList<>();
         for (UUID userUuid : userUuidList) {
-            User u = userRepository.findById(userUuid).orElse(null);
+            final User u = userRepository.findById(userUuid).orElse(null);
             if (u == null) {
                 return new Response(400, "ALL_USERS_MUST_EXIST (" + userUuid + ")");
             }
@@ -78,7 +81,7 @@ public final class CourseAccessEndpoints extends EndpointClass {
         }
 
         for (User u : userList) {
-            UserCourseAccess uca = userCourseAccessRepository.findByCourseAndUser(course, u).orElse(null);
+            final UserCourseAccess uca = userCourseAccessRepository.findByCourseAndUser(course, u).orElse(null);
             if (uca != null) {
                 uca.setAccessType(accessType);
                 userCourseAccessRepository.saveAndFlush(uca);
@@ -100,11 +103,10 @@ public final class CourseAccessEndpoints extends EndpointClass {
             return new Response(400, "UNKNOWN_COURSE");
         }
 
-        UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
-        RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
-        if (!course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.EDIT)) {
+        if (!this.hasAccess(user, course, AccessType.EDIT)) {
             return new Response(400, "ACCESS_DENIED");
         }
+
         AccessType accessType;
         try {
             accessType = AccessType.valueOf(type.toUpperCase());
@@ -112,14 +114,15 @@ public final class CourseAccessEndpoints extends EndpointClass {
             return new Response(400, "UNKNOWN_ACCESS_TYPE");
         }
 
-        if (!course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.ADMIN)) {
+        // that users with edit role can't upgrade users to role with edit or higher
+        if (!this.hasAccess(user, course, AccessType.ADMIN)) {
             if (accessType.getLvl() >= AccessType.EDIT.getLvl()) {
                 return new Response(400, "ACCESS_DENIED");
             }
         }
 
 
-        List<UserRole> userRoleList = new ArrayList<>();
+        final List<UserRole> userRoleList = new ArrayList<>();
         for (UUID userRoleUuid : roleUuidList) {
             UserRole u = userRoleRepository.findById(userRoleUuid).orElse(null);
             if (u == null) {
@@ -129,7 +132,7 @@ public final class CourseAccessEndpoints extends EndpointClass {
         }
 
         for (UserRole ur : userRoleList) {
-            RoleCourseAccess rca = roleCourseAccessRepository.findByCourseAndUserRole(course, ur).orElse(null);
+            final RoleCourseAccess rca = roleCourseAccessRepository.findByCourseAndUserRole(course, ur).orElse(null);
             if (rca != null) {
                 rca.setAccessType(accessType);
                 roleCourseAccessRepository.saveAndFlush(rca);
@@ -150,11 +153,9 @@ public final class CourseAccessEndpoints extends EndpointClass {
             return new Response(400, "UNKNOWN_COURSE");
         }
 
-        UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
-        RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
         boolean onlyEdit = false;
-        if (!course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.EDIT)) {
-            onlyEdit = true;
+        if (!this.hasAccess(user, course, AccessType.EDIT)) {
+            return new Response(400, "NO_EDIT_ACCESS");
         }
 
 
@@ -168,8 +169,8 @@ public final class CourseAccessEndpoints extends EndpointClass {
             if (rca == null) {
                 return new Response(400, "USER_ROLE_HAS_NO_ACCESS (" + userRoleUuid + ")");
             }
-            if (rca.getAccessType().getLvl() >= AccessType.EDIT.getLvl() && onlyEdit) {
-                return new Response(400, "ACCESS_DENIED_ONLY_NOT_EDITORS");
+            if (!this.hasAccess(user, course, AccessType.ADMIN) && rca.getAccessType().getLvl() >= AccessType.EDIT.getLvl()) {
+                return new Response(400, "ACCESS_DENIED_ONLY_ADMINS");
             }
             roleCourseAccessList.add(rca);
         }
@@ -189,26 +190,23 @@ public final class CourseAccessEndpoints extends EndpointClass {
             return new Response(400, "UNKNOWN_COURSE");
         }
 
-        UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
-        RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
-        boolean onlyEdit = false;
-        if (!course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.EDIT)) {
-            onlyEdit = true;
+        if (!this.hasAccess(user, course, AccessType.EDIT)) {
+            return new Response(400, "NO_EDIT_ACCESS");
         }
 
 
-        List<UserCourseAccess> userCourseAccessList = new ArrayList<>();
+        final List<UserCourseAccess> userCourseAccessList = new ArrayList<>();
         for (UUID userUuid : userUuidList) {
-            User u = userRepository.findById(userUuid).orElse(null);
+            final User u = userRepository.findById(userUuid).orElse(null);
             if (u == null) {
                 return new Response(400, "ALL_USER_ROLES_MUST_EXIST (" + userUuid + ")");
             }
-            UserCourseAccess uca = userCourseAccessRepository.findByCourseAndUser(course, u).orElse(null);
+            final UserCourseAccess uca = userCourseAccessRepository.findByCourseAndUser(course, u).orElse(null);
             if (uca == null) {
                 return new Response(400, "USER_ROLE_HAS_NO_ACCESS (" + userUuid + ")");
             }
-            if (uca.getAccessType().getLvl() >= AccessType.EDIT.getLvl() && onlyEdit) {
-                return new Response(400, "ACCESS_DENIED_ONLY_NOT_EDITORS");
+            if (uca.getAccessType().getLvl() >= AccessType.EDIT.getLvl() && !this.hasAccess(user, course, AccessType.ADMIN)) {
+                return new Response(400, "ACCESS_DENIED_ONLY_ADMINS");
             }
             userCourseAccessList.add(uca);
         }
@@ -217,5 +215,10 @@ public final class CourseAccessEndpoints extends EndpointClass {
             userCourseAccessRepository.delete(uca);
         }
         return new Response(200);
+    }
+
+
+    private boolean hasAccess(final User user, final Course course, final AccessType accessType) {
+        return Course.hasAccess(user, course, accessType, this.userRoleBindingRepository, this.roleCourseAccessRepository, this.userCourseAccessRepository);
     }
 }

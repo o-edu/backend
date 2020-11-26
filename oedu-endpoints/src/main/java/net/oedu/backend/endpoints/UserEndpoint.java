@@ -176,4 +176,14 @@ public final class UserEndpoint extends EndpointClass {
         userRepository.delete(user);
         return new Response(200);
     }
+
+    @Endpoint("info")
+    public Response userInfo(@EndpointParameter(value = "uuid") final UUID uuid) {
+        final Optional<User> user = userRepository.findById(uuid);
+        if (user.isPresent()) {
+            return new Response(200, user.get());
+        } else {
+            return new Response(400, "UNKNOWN_UUID");
+        }
+    }
 }

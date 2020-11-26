@@ -4,15 +4,16 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import net.oedu.backend.base.endpoints.*;
 import net.oedu.backend.base.json.JsonBuilder;
 import net.oedu.backend.data.entities.access.AccessType;
-import net.oedu.backend.data.entities.access.RoleCourseAccess;
-import net.oedu.backend.data.entities.access.UserCourseAccess;
 import net.oedu.backend.data.entities.course.Course;
 import net.oedu.backend.data.entities.user.User;
+import net.oedu.backend.data.entities.user.UserRoleBinding;
 import net.oedu.backend.data.repositories.access.RoleCourseAccessRepository;
 import net.oedu.backend.data.repositories.access.UserCourseAccessRepository;
 import net.oedu.backend.data.repositories.course.CourseRepository;
+import net.oedu.backend.data.repositories.user.UserRoleBindingRepository;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class CourseEndpoints extends EndpointClass {
 
@@ -23,14 +24,17 @@ public final class CourseEndpoints extends EndpointClass {
     private CourseRepository courseRepository;
     private RoleCourseAccessRepository roleCourseAccessRepository;
     private UserCourseAccessRepository userCourseAccessRepository;
+    private UserRoleBindingRepository userRoleBindingRepository;
 
     @EndpointSetup
     public void setup(@EndpointParameter(value = "course", type = EndpointParameterType.REPOSITORY) final CourseRepository courseRepository,
                       @EndpointParameter(value = "roleCourseAccess", type = EndpointParameterType.REPOSITORY) final RoleCourseAccessRepository roleCourseAccessRepository,
-                      @EndpointParameter(value = "userCourseAccess", type = EndpointParameterType.REPOSITORY) final UserCourseAccessRepository userCourseAccessRepository) {
+                      @EndpointParameter(value = "userCourseAccess", type = EndpointParameterType.REPOSITORY) final UserCourseAccessRepository userCourseAccessRepository,
+                      @EndpointParameter(value = "userRoleBinding", type = EndpointParameterType.REPOSITORY) final UserRoleBindingRepository userRoleBindingRepository) {
         this.courseRepository = courseRepository;
         this.userCourseAccessRepository = userCourseAccessRepository;
         this.roleCourseAccessRepository = roleCourseAccessRepository;
+        this.userRoleBindingRepository = userRoleBindingRepository;
     }
 
     @Endpoint("create")
@@ -50,19 +54,13 @@ public final class CourseEndpoints extends EndpointClass {
             }
             return new Response(HttpResponseStatus.BAD_REQUEST, "NO_RIGHTS_HERE");
         }
-        Course parentCourse = courseRepository.findById(parentCourseUuid).get();
-        RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(parentCourse, user.getUserRole()).orElse(null);
-        UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(parentCourse, user).orElse(null);
+        final Course parentCourse = courseRepository.findById(parentCourseUuid).get();
 
-        if (userCourseAccess != null && userCourseAccess.getAccessType().hasAccess(AccessType.EDIT)) {
+        if (this.hasAccess(user, parentCourse, AccessType.EDIT)) {
             return new Response(200, courseRepository.createCourse(parentCourse, name, user));
         }
 
-        if (roleCourseAccess != null && roleCourseAccess.getAccessType().hasAccess(AccessType.EDIT)) {
-            return new Response(200, courseRepository.createCourse(parentCourse, name, user));
-        }
-
-        return new Response(200);
+        return new Response(400, "NO_RIGHTS_FOR_THAT_COURSE");
     }
 
     @Endpoint("has_access")
@@ -70,13 +68,11 @@ public final class CourseEndpoints extends EndpointClass {
                               @EndpointParameter("course_uuid") final UUID courseUuid,
                               @EndpointParameter(value = "type", optional = true) final String type) {
         final Course course = courseRepository.findById(courseUuid).orElse(null);
-        AccessType accessType = type == null ? AccessType.READ : AccessType.valueOf(type);
+        final AccessType accessType = type == null ? AccessType.READ : AccessType.valueOf(type);
         if (course == null) {
             return new Response(400, "NO_VALID_COURSE");
         }
-        final RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
-        final UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
-        return new Response(200, JsonBuilder.create("access", course.hasAccess(user, roleCourseAccess, userCourseAccess, accessType)).build());
+        return new Response(200, JsonBuilder.create("access", this.hasAccess(user, course, accessType)).build());
     }
 
     @Endpoint("info")
@@ -96,10 +92,8 @@ public final class CourseEndpoints extends EndpointClass {
         if (course == null) {
             return new Response(400, "NO_SUCH_COURSE");
         }
-        RoleCourseAccess roleCourseAccess = roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null);
-        UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
 
-        if (course.hasAccess(user, roleCourseAccess, userCourseAccess, AccessType.ADMIN)) {
+        if (this.hasAccess(user, course, AccessType.ADMIN)) {
             courseRepository.delete(course);
             return new Response(200);
         } else {
@@ -114,18 +108,22 @@ public final class CourseEndpoints extends EndpointClass {
 
         if (parentCourseUuid == null) {
             courseSet.addAll(userCourseAccessRepository.findAllReadable(user));
-            courseSet.addAll(roleCourseAccessRepository.findAllReadable(user.getUserRole()));
+            this.userRoleBindingRepository.findAllByUser(user).stream().map(UserRoleBinding::getUserRole).forEach(userRole -> {
+                courseSet.addAll(roleCourseAccessRepository.findAllReadable(userRole));
+            });
+
         } else {
-            Course parentCourse = courseRepository.findById(parentCourseUuid).orElse(null);
+            final Course parentCourse = courseRepository.findById(parentCourseUuid).orElse(null);
             if (parentCourse == null) {
                 return new Response(400, "UNKNOWN_COURSE");
             }
             courseSet.addAll(courseRepository.findCoursesByParentCourse(parentCourse));
-            courseSet.removeIf(course -> !course.hasAccess(user,
-                    roleCourseAccessRepository.findByCourseAndUserRole(course, user.getUserRole()).orElse(null),
-                    userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null),
-                    AccessType.READ));
+            courseSet.removeIf(course -> !this.hasAccess(user, course, AccessType.READ));
         }
         return new Response(200, courseSet);
+    }
+
+    private boolean hasAccess(final User user, final Course course, final AccessType accessType) {
+        return Course.hasAccess(user, course, accessType, this.userRoleBindingRepository, this.roleCourseAccessRepository, this.userCourseAccessRepository);
     }
 }

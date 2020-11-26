@@ -9,7 +9,6 @@ import net.oedu.backend.base.sql.models.TableModelAutoId;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.ManyToOne;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -27,9 +26,6 @@ public final class User extends TableModelAutoId implements JsonSerializable {
     private OffsetDateTime lastLogin;
     private boolean serverAdministrator;
 
-    @ManyToOne
-    private UserRole userRole;
-
     @Override
     public JsonObject serializeJson() {
         return JsonBuilder.create("name", name)
@@ -37,7 +33,7 @@ public final class User extends TableModelAutoId implements JsonSerializable {
                 .add("mail", mail)
                 .add("creation", creation)
                 .add("last_login", lastLogin)
-                .add("user_role", userRole == null ? "null" : userRole.serializeJson())
+                .add("admin", serverAdministrator)
                 .build();
     }
 }

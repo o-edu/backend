@@ -10,10 +10,18 @@ import net.oedu.backend.data.entities.access.AccessType;
 import net.oedu.backend.data.entities.access.RoleCourseAccess;
 import net.oedu.backend.data.entities.access.UserCourseAccess;
 import net.oedu.backend.data.entities.user.User;
+import net.oedu.backend.data.entities.user.UserRole;
+import net.oedu.backend.data.entities.user.UserRoleBinding;
+import net.oedu.backend.data.repositories.access.RoleCourseAccessRepository;
+import net.oedu.backend.data.repositories.access.UserCourseAccessRepository;
+import net.oedu.backend.data.repositories.user.UserRoleBindingRepository;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -29,16 +37,34 @@ public final class Course extends TableModelAutoId implements JsonSerializable {
     @ManyToOne
     private Course parentCourse;
 
-    public boolean hasAccess(final User user, final RoleCourseAccess roleCourseAccess, final UserCourseAccess userCourseAccess, final AccessType minAccessType) {
+    public boolean hasAccess(final User user, final UserCourseAccess userCourseAccess, final AccessType minAccessType, final RoleCourseAccess... roleCourseAccesses) {
         System.out.println(creator.equals(user));
         System.err.println(user.getName() + "-->" + creator.getName());
         if (user.isServerAdministrator() || creator.equals(user)) {
             return true;
         }
         boolean value = false;
-        if (roleCourseAccess != null) value = roleCourseAccess.getAccessType().hasAccess(minAccessType);
+        for (RoleCourseAccess roleCourseAccess : roleCourseAccesses) {
+            if (!value && roleCourseAccess != null) value = roleCourseAccess.getAccessType().hasAccess(minAccessType);
+        }
         if (!value && userCourseAccess != null) value = userCourseAccess.getAccessType().hasAccess(minAccessType);
         return value;
+    }
+
+
+    public static boolean hasAccess(final User user, final Course course, final AccessType accessType,
+                                    final UserRoleBindingRepository userRoleBindingRepository,
+                                    final RoleCourseAccessRepository roleCourseAccessRepository,
+                                    final UserCourseAccessRepository userCourseAccessRepository) {
+        final List<UserRole> userRoles = userRoleBindingRepository.findAllByUser(user).stream().map(UserRoleBinding::getUserRole).collect(Collectors.toList());
+        List<RoleCourseAccess> roleCourseAccesses = new ArrayList<>();
+        for (UserRole role : userRoles) {
+            roleCourseAccesses.add(
+                    roleCourseAccessRepository.findByCourseAndUserRole(course, role).orElse(null)
+            );
+        }
+        final UserCourseAccess userCourseAccess = userCourseAccessRepository.findByCourseAndUser(course, user).orElse(null);
+        return course.hasAccess(user, userCourseAccess, accessType, roleCourseAccesses.toArray(new RoleCourseAccess[0]));
     }
 
     @Override
