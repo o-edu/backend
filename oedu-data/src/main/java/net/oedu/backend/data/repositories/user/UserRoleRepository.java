@@ -1,13 +1,14 @@
 package net.oedu.backend.data.repositories.user;
 
+import net.oedu.backend.base.sql.models.AutoIdRepository;
 import net.oedu.backend.data.entities.user.UserRole;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
+
 @Repository
-public interface UserRoleRepository extends JpaRepository<UserRole, Integer> {
+public interface UserRoleRepository extends AutoIdRepository<UserRole> {
 
-    UserRole findByName(String name);
-
-    UserRole findByStatus(int status);
+    Optional<UserRole> findByName(String name);
 }

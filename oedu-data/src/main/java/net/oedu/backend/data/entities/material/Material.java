@@ -1,7 +1,8 @@
 package net.oedu.backend.data.entities.material;
 
 import com.google.gson.JsonObject;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import net.oedu.backend.base.json.JsonBuilder;
 import net.oedu.backend.base.json.JsonSerializable;
 import net.oedu.backend.base.sql.models.TableModelAutoId;
@@ -13,7 +14,8 @@ import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
 import java.time.OffsetDateTime;
 
-@Data
+@Getter
+@Setter
 @Entity
 public final class Material extends TableModelAutoId implements JsonSerializable {
     private String name;
@@ -37,7 +39,7 @@ public final class Material extends TableModelAutoId implements JsonSerializable
 
     @Override
     public JsonObject serializeJson() {
-        return JsonBuilder.create("name", name + fileEnd)
+        return JsonBuilder.create("name", name + '.' + fileEnd)
                 .add("material_uuid", getUuid())
                 .add("course", course)
                 .build();

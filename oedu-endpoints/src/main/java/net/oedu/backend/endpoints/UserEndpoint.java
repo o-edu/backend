@@ -4,7 +4,6 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import net.oedu.backend.base.endpoints.*;
 import net.oedu.backend.base.security.Hashing;
 import net.oedu.backend.base.server.ServerUtils;
-import net.oedu.backend.data.entities.user.UserRole;
 import net.oedu.backend.data.entities.user.UserSession;
 import net.oedu.backend.data.repositories.access.UserCourseAccessRepository;
 import net.oedu.backend.data.repositories.access.UserMaterialAccessRepository;
@@ -58,17 +57,21 @@ public final class UserEndpoint extends EndpointClass {
             return new Response(400, "ALREADY_LOGGED_IN");
         }
 
-        if (userRoleRepository.findByStatus(0) == null) {
-            UserRole role = new UserRole();
-            role.setStatus((short) 0);
-            role.setName("default");
-            userRoleRepository.save(role);
+        if (userRepository.findUserByName(name).isPresent()) {
+            return new Response(400, "NAME_ALREADY_EXISTS");
         }
-        User user = User.createUser(userRepository, name, mail, password, userRoleRepository.findByStatus(0));
-        UserSession userSession = UserSession.create(userSessionRepository, user);
+
+        if (userRepository.findUserByMail(mail).isPresent()) {
+            return new Response(400, "MAIL_ALREADY_EXISTS");
+        }
 
 
-        return new Response(200, UserSession.create(userSessionRepository, user))
+        User user = userRepository.createUser(name, mail, password, null);
+        UserSession userSession = userSessionRepository.create(user);
+
+        //TODO normal user roles?
+
+        return new Response(200, userSession)
                 .setAction(ResponseAction.LOG_IN, userSession);
     }
 
@@ -83,11 +86,11 @@ public final class UserEndpoint extends EndpointClass {
 
         Response response = new Response(400, "ACCESS_DENIED");
         try {
-            User user = userRepository.findUserByName(name);
+            User user = userRepository.findUserByName(name).orElse(null);
             if (Hashing.verify(password, user.getPasswordHash())) {
                 user.setLastLogin(OffsetDateTime.now());
                 userRepository.save(user);
-                UserSession userSession = UserSession.create(userSessionRepository, user);
+                UserSession userSession = userSessionRepository.create(user);
                 response = new Response(200, userSession)
                         .setAction(ResponseAction.LOG_IN, userSession);
             }
@@ -100,26 +103,26 @@ public final class UserEndpoint extends EndpointClass {
 
     @Endpoint("session")
     public Response sessionLogin(@EndpointParameter(value = "user", type = EndpointParameterType.USER, optional = true) final User u,
-                                 @EndpointParameter("token") final String token) {
+                                 @EndpointParameter("token") final UUID token) {
 
         if (u != null) {
             return new Response(400, "ALREADY_LOGGED_IN");
         }
 
-        Optional<UserSession> session = userSessionRepository.findById(UUID.fromString(token));
+        Optional<UserSession> session = userSessionRepository.findById(token);
         if (session.isEmpty()) {
             return new Response(400, "INVALID_SESSION");
         }
         User user = session.get().getUser();
         userSessionRepository.delete(session.get());
-        UserSession userSession = UserSession.create(userSessionRepository, user);
+        UserSession userSession = userSessionRepository.create(user);
         return new Response(200, userSession).setAction(ResponseAction.LOG_IN, userSession);
     }
 
     @Endpoint("delete_session")
     public Response deleteSession(@EndpointParameter(value = "user", type = EndpointParameterType.USER, optional = true) final User user,
-                                  @EndpointParameter("session_uuid") final String sessionUuid) {
-        Optional<UserSession> session = userSessionRepository.findById(UUID.fromString(sessionUuid));
+                                  @EndpointParameter("token") final UUID token) {
+        Optional<UserSession> session = userSessionRepository.findById(token);
         if (session.isEmpty()) return new Response(400, "NO_SUCH_SESSION");
         if (user != null) ServerUtils.action(session.get(), ResponseAction.LOG_OUT, session.get());
         session.ifPresent(userSession -> userSessionRepository.delete(userSession));
