@@ -95,6 +95,18 @@ public final class FileEndpoint extends EndpointClass {
     @Endpoint("delete")
     public Response delete(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
                            @EndpointParameter("material_uuid") final UUID materialUuid) {
+
+        final Material material = materialRepository.findById(materialUuid).orElse(null);
+        if (material == null) {
+            return new Response(HttpResponseStatus.BAD_REQUEST, "NOW_SUCH_FILE");
+        }
+
+        if (hasAccess(user, material.getCourse(), AccessType.EDIT) || material.getCreator().equals(user)) {
+            materialRepository.delete(material);
+            return new Response(HttpResponseStatus.OK);
+        }
+        // TODO delete material access
+        // TODO everything done concerning refactoring this method?
         /*Optional<Material> mat = materialRepository.findById(materialUuid);
 
         if (mat.isEmpty()) {
@@ -118,14 +130,18 @@ public final class FileEndpoint extends EndpointClass {
         roleMaterialAccessRepository.deleteAllByMaterial(material);
         materialRepository.delete(material);
         */
-        // TODO has to be refactored
         return new Response(HttpResponseStatus.OK);
     }
 
     @Endpoint("delete_all")
-    public Response deleteAll(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user) {
+    public Response deleteAll(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
+                              @EndpointParameter(value = "course") final UUID courseUuid) {
+        final Course course = courseRepository.findById(courseUuid).orElse(null);
+        if (course == null) {
+            return new Response(HttpResponseStatus.BAD_REQUEST, "NO_SUCH_COURSE");
+        }
         if (user.isServerAdministrator()) {
-            for (Material m : materialRepository.findAll()) {
+            for (Material m : materialRepository.findMaterialsByCourse(course)) {
                 delete(user, m.getUuid());
             }
             return new Response(HttpResponseStatus.OK);
@@ -154,7 +170,15 @@ public final class FileEndpoint extends EndpointClass {
 
         ServerUtils.sendFile(session, new File(String.valueOf(material.getUuid())));
         */
-        //TODO refactor
+        //TODO check if already finished with refactoring here
+        final Material material = materialRepository.findById(materialUuid).orElse(null);
+        if (material == null) {
+            return new Response(HttpResponseStatus.BAD_REQUEST, "NO_SUCH_FILE");
+        }
+        if (hasAccess(user, material.getCourse(), AccessType.READ) || material.getCreator().equals(user)) {
+            ServerUtils.sendFile(session, material.getFile());
+            return new Response(HttpResponseStatus.OK, material);
+        }
         return new Response(HttpResponseStatus.OK, new JsonBuilder().build());
     }
 

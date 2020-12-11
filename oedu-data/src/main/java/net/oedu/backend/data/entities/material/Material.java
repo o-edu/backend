@@ -12,6 +12,7 @@ import net.oedu.backend.data.repositories.material.MaterialRepository;
 
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
+import java.io.File;
 import java.time.OffsetDateTime;
 
 @Getter
@@ -35,6 +36,10 @@ public final class Material extends TableModelAutoId implements JsonSerializable
         m.creator = creator;
         rep.saveAndFlush(m);
         return m;
+    }
+
+    public File getFile() {
+        return new File(String.valueOf(this.getUuid()));
     }
 
     @Override
