@@ -13,7 +13,6 @@ import net.oedu.backend.data.repositories.course.CourseRepository;
 import net.oedu.backend.data.repositories.user.UserRoleBindingRepository;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public final class CourseEndpoints extends EndpointClass {
 
@@ -69,9 +68,6 @@ public final class CourseEndpoints extends EndpointClass {
                               @EndpointParameter(value = "type", optional = true) final String type) {
         final Course course = courseRepository.findById(courseUuid).orElse(null);
         final AccessType accessType = type == null ? AccessType.READ : AccessType.valueOf(type);
-        if (course == null) {
-            return new Response(400, "NO_VALID_COURSE");
-        }
         return new Response(200, JsonBuilder.create("access", this.hasAccess(user, course, accessType)).build());
     }
 
@@ -104,13 +100,17 @@ public final class CourseEndpoints extends EndpointClass {
     @Endpoint("list_courses")
     public Response listCourses(@EndpointParameter(value = "user", type = EndpointParameterType.USER) final User user,
                                 @EndpointParameter(value = "parent_course_uuid", optional = true) final UUID parentCourseUuid) {
-        Set<Course> courseSet = new HashSet<>();
+        final Set<Course> courseSet = new HashSet<>();
 
         if (parentCourseUuid == null) {
-            courseSet.addAll(userCourseAccessRepository.findAllReadable(user));
-            this.userRoleBindingRepository.findAllByUser(user).stream().map(UserRoleBinding::getUserRole).forEach(userRole -> {
-                courseSet.addAll(roleCourseAccessRepository.findAllReadable(userRole));
-            });
+            if (this.hasAccess(user, null, AccessType.READ)) {
+                courseSet.addAll(userCourseAccessRepository.findAllReadable(user));
+                this.userRoleBindingRepository.findAllByUser(user).stream().map(UserRoleBinding::getUserRole).forEach(userRole -> {
+                    courseSet.addAll(roleCourseAccessRepository.findAllReadable(userRole));
+                });
+            } else {
+                return new Response(400, "NO_ACCESS");
+            }
 
         } else {
             final Course parentCourse = courseRepository.findById(parentCourseUuid).orElse(null);

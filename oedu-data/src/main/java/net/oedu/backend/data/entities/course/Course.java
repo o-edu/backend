@@ -38,8 +38,6 @@ public final class Course extends TableModelAutoId implements JsonSerializable {
     private Course parentCourse;
 
     public boolean hasAccess(final User user, final UserCourseAccess userCourseAccess, final AccessType minAccessType, final RoleCourseAccess... roleCourseAccesses) {
-        System.out.println(creator.equals(user));
-        System.err.println(user.getName() + "-->" + creator.getName());
         if (user.isServerAdministrator() || creator.equals(user)) {
             return true;
         }
@@ -56,8 +54,15 @@ public final class Course extends TableModelAutoId implements JsonSerializable {
                                     final UserRoleBindingRepository userRoleBindingRepository,
                                     final RoleCourseAccessRepository roleCourseAccessRepository,
                                     final UserCourseAccessRepository userCourseAccessRepository) {
+        if (course == null) {
+            if (AccessType.READ.hasAccess(accessType)) {
+                return true;
+            } else {
+                return user.isServerAdministrator();
+            }
+        }
         final List<UserRole> userRoles = userRoleBindingRepository.findAllByUser(user).stream().map(UserRoleBinding::getUserRole).collect(Collectors.toList());
-        List<RoleCourseAccess> roleCourseAccesses = new ArrayList<>();
+        final List<RoleCourseAccess> roleCourseAccesses = new ArrayList<>();
         for (UserRole role : userRoles) {
             roleCourseAccesses.add(
                     roleCourseAccessRepository.findByCourseAndUserRole(course, role).orElse(null)
