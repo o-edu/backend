@@ -55,11 +55,16 @@ public final class WebSocketFrameHandler extends SimpleChannelInboundHandler<Web
             request = gson.fromJson(message, Map.class);
 
         } catch (JsonSyntaxException e) {
-            sendMessage(ctx.channel(), false, new Response(HttpResponseStatus.BAD_REQUEST, "CORRPUT_JSON_SYNTAX"), "error");
+            sendMessage(ctx.channel(), false, new Response(HttpResponseStatus.BAD_REQUEST, "CORRUPT_JSON_SYNTAX"), "error");
             return;
         }
         if (request.get("tag") == null) {
             sendMessage(ctx.channel(), false, new Response(HttpResponseStatus.BAD_REQUEST, "TAG_MISSING"), "error");
+            return;
+        }
+        if (request.get("endpoint") == null) {
+            sendMessage(ctx.channel(), JsonBuilder.create("tag", request.get("tag")).add("error", "ENDPOINT_MISSING").build());
+            return;
         }
         try {
 

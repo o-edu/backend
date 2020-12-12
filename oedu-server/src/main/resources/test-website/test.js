@@ -1,22 +1,30 @@
-let socket = new WebSocket("ws://localhost:8080/websocket");
+let serverAddress = "ws://localhost:8080/websocket";
+
+let socket = new WebSocket(serverAddress);
 let message = null;
-socket.onopen = function (e) {
-    console.log("connected");
-}
+reconnect();
 
-socket.onmessage = function (e) {
-    message = JSON.parse(e.data)
-    console.log(JSON.parse(e.data));
+function reconnect() {
+   socket = new WebSocket(serverAddress)
 
-    document.getElementById("answer").value = JSON.stringify(message, null, 4);
-}
+    socket.onopen = function (e) {
+        console.log("connected");
+    }
 
-socket.onclose = function (e) {
-    console.log("closed");
-}
+    socket.onmessage = function (e) {
+        message = JSON.parse(e.data)
+        console.log(JSON.parse(e.data));
 
-socket.onerror = function(e) {
-    console.log(e);
+        document.getElementById("answer").value = JSON.stringify(message, null, 4);
+    }
+
+    socket.onclose = function (e) {
+        console.log("closed");
+    }
+
+    socket.onerror = function (e) {
+        console.log(e);
+    }
 }
 
 function sendRequest(req) {
@@ -52,5 +60,4 @@ function sendFile() {
     }
 
     reader.readAsArrayBuffer(file);
-
 }
